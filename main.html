@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lotto Program</title>
+</head>
+<style>
+    /* 기존 스타일 */
+    #ballContainer {
+        width: 50%; /* 반응형을 위해 비율로 변경 */
+        height: 0; /* 높이를 0으로 초기화 */
+        padding-bottom: 50%; /* 1:1 비율 유지 */
+        border-radius: 50%;
+        background-color: #FFD6FF;
+        position: relative;
+        overflow: hidden;
+        margin: 20px auto 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .ball {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.25rem; /* rem 단위로 변경 */
+        color: white;
+        position: absolute;
+    }
+
+    #numberList, #drawButton, #selectButton {
+        display: block;
+        width: 60%; /* 기본 크기 변경 */
+        margin: 10px auto;
+        padding: 10px;
+        border-radius: 20px;
+        border: 2px solid #FFB6C1;
+        background-color: #FFC0CB;
+        color: #4B0082;
+        font-size: 1rem; /* rem 단위로 변경 */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        text-align: center; /* 텍스트 중앙 정렬 */
+    }
+
+    #drawButton, #selectButton {
+        cursor: pointer;
+    }
+
+    /* 미디어 쿼리를 사용한 반응형 디자인 */
+    @media (max-width: 768px) {
+        .ball {
+            width: 70px; /* 화면이 작을 때 공의 크기 조정 */
+            height: 70px;
+            font-size: 0.8rem; /* 글자 크기 조정 */
+        }
+
+        #numberList, #drawButton, #selectButton {
+            width: 80%; /* 작은 화면에서는 더 넓게 */
+        }
+
+        .firework {
+            width: 15px; /* 모바일에서 더 큰 크기 */
+            height: 15px;
+        }
+
+        #congratsModal {
+            padding: 15px;
+            font-size: 14px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .ball {
+            width: 40px;
+            height: 40px;
+            font-size: 0.6rem; /* 더 작은 화면에서 글자 크기 더 줄임 */
+        }
+
+        #numberList, #drawButton, #selectButton {
+            width: 90%; /* 더 작은 화면에서는 거의 전체 너비 사용 */
+        }
+
+        .firework {
+            width: 25px; /* 데스크탑에서 더 큰 크기 */
+            height: 25px;
+        }
+
+        #congratsModal {
+            padding: 30px;
+            font-size: 18px;
+        }
+    }
+
+    @keyframes fireworks {
+        from { transform: scale(0); opacity: 1; }
+        to { transform: scale(3); opacity: 0; } /* 폭죽의 최종 크기를 더 크게 조정 */
+    }
+
+    .firework {
+        position: absolute;
+        border-radius: 50%;
+        animation: fireworks 1s ease-out forwards;
+    }
+
+    #congratsModal {
+        display: none;
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        z-index: 1000;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        text-align: center;
+        max-width: 80%;
+    }
+
+</style>
+
+<body>
+<div id="ballContainer"></div>
+<input type="text" id="numberList" placeholder="추첨할 데이터를 입력 해주세요">
+<button id="drawButton">공 추가</button>
+<button id="selectButton">추첨하기</button>
+<!-- 축하 메시지를 위한 모달 -->
+<div id="congratsModal" style="display:none; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border-radius: 10px; z-index: 1000;">
+    <p id="congratsMessage">축하합니다!</p>
+</div>
+
+<!-- 폭죽 애니메이션을 위한 컨테이너 -->
+<div id="fireworksContainer" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none;"></div>
+
+</body>
+</html>
+
+<script type="text/javascript">
+    let balls = [];
+
+    document.getElementById('drawButton').addEventListener('click', function() {
+        const input = document.getElementById('numberList').value;
+        const numberArray = input.split(',').map(item => item.trim());
+        numberArray.forEach(number => {
+            console.log(number);
+            if (number != '') {
+                createBall(number);
+            }
+        });
+        document.getElementById('numberList').value = '';
+        document.getElementById('numberList').focus();
+    });
+
+    function getRandomColor() {
+        const letters = '0123456789ABCDEF';
+        let color = '#';
+        for (let i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    }
+
+    function getBrightness(color) {
+        const r = parseInt(color.substr(1, 2), 16);
+        const g = parseInt(color.substr(3, 2), 16);
+        const b = parseInt(color.substr(5, 2), 16);
+        return (r * 299 + g * 587 + b * 114) / 1000;
+    }
+
+    function createBall(number) {
+        const ballContainer = document.getElementById('ballContainer');
+        const ball = document.createElement('div');
+        ball.className = 'ball';
+        ball.textContent = number;
+
+        const ballColor = getRandomColor();
+        ball.style.backgroundColor = ballColor;
+
+        const textColor = getBrightness(ballColor) > 128 ? 'black' : 'white';
+        ball.style.color = textColor;
+
+        let x = ballContainer.offsetWidth / 2 -50;
+        let y = ballContainer.offsetHeight / 2 -50;
+        let dx = (Math.random() - 0.5) * 4;
+        let dy = (Math.random() - 0.5) * 4;
+
+        ball.style.left = `${x}px`;
+        ball.style.top = `${y}px`;
+
+        balls.push(ball);
+        ballContainer.appendChild(ball);
+
+        balls.forEach((ballData, index) => {
+            ballData.style.opacity = '1'; // 선택된 공의 투명도는 유지
+        });
+
+        function moveBall() {
+            const nextX = x + dx;
+            const nextY = y + dy;
+            const ballRadius = ball.offsetWidth / 2;
+
+            // 공의 중심 위치 계산
+            const ballCenterX = nextX + ballRadius;
+            const ballCenterY = nextY + ballRadius;
+
+            // 원의 중심 위치
+            const centerX = ballContainer.offsetWidth / 2;
+            const centerY = ballContainer.offsetHeight / 2;
+
+            // 원의 중심으로부터 공의 중심까지의 거리 계산
+            const distanceFromCenter = Math.sqrt((ballCenterX - centerX) ** 2 + (ballCenterY - centerY) ** 2);
+            const containerRadius = ballContainer.offsetWidth / 2;
+
+            // 공이 원형 컨테이너의 경계를 넘어가려고 하면 새로운 방향으로 반사
+            if (distanceFromCenter + ballRadius > containerRadius) {
+                // 경계에 닿았을 때, 공의 이동 방향을 랜덤하게 조정하여 반사 효과를 줍니다.
+                const angle = Math.atan2(dy, dx) + (Math.random() * Math.PI - Math.PI / 2); // 반사 후 새로운 각도
+                const speed = Math.sqrt(dx * dx + dy * dy); // 속도 유지
+                dx = Math.cos(angle) * speed;
+                dy = Math.sin(angle) * speed;
+            } else {
+                x = nextX;
+                y = nextY;
+            }
+
+            ball.style.left = `${x}px`;
+            ball.style.top = `${y}px`;
+
+            requestAnimationFrame(moveBall);
+        }
+
+        moveBall();
+    }
+
+    function fadeIn(ball) {
+        let opacity = 0;
+        const interval = setInterval(function() {
+            if (opacity < 1) {
+                opacity += 0.02;
+                ball.style.opacity = opacity;
+            } else {
+                clearInterval(interval);
+            }
+        }, 10); // 10ms 마다 opacity 증가
+    }
+
+    document.getElementById('selectButton').addEventListener('click', function() {
+        if (balls.length > 0) {
+            const selectedIndex = Math.floor(Math.random() * balls.length);
+            const selectedBall = balls[selectedIndex];
+            // 추첨된 내용을 모달 창에 표시합니다.
+            const congratsModal = document.getElementById('congratsModal');
+            document.getElementById('congratsMessage').textContent = `축하합니다! ${selectedBall.textContent}가(이) 선택되었습니다!`;
+            congratsModal.style.display = 'block';
+
+            // 선택된 공을 제외한 모든 공의 투명도를 낮춥니다.
+            balls.forEach((ballData, index) => {
+                if (index !== selectedIndex) {
+                    ballData.style.opacity = '0.3'; // 투명도를 낮춤
+                } else {
+                    ballData.style.opacity = '1'; // 선택된 공의 투명도는 유지
+                }
+            });
+
+            // 폭죽 애니메이션 시작
+            startFireworks();
+
+            // 3초 후 모달 숨기기 및 폭죽 멈추기
+            setTimeout(() => {
+                congratsModal.style.display = 'none';
+                // 폭죽 애니메이션 멈추기
+                stopFireworks();
+            }, 3000);
+        }
+    });
+
+    let fireworksInterval; // 폭죽을 생성하는 인터벌 저장 변수
+
+    function startFireworks() {
+        const fireworksContainer = document.getElementById('fireworksContainer');
+        fireworksContainer.style.display = 'block';
+        fireworksContainer.innerHTML = ''; // 이전 폭죽 제거
+
+        fireworksInterval = setInterval(() => {
+            const firework = document.createElement('div');
+            firework.classList.add('firework');
+            firework.style.left = `${Math.random() * 100}%`;
+            firework.style.top = `${Math.random() * 100}%`;
+            const size = Math.random() * 20 + 10; // 10px에서 30px 사이 크기
+            firework.style.width = `${size}px`;
+            firework.style.height = `${size}px`;
+            firework.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+            fireworksContainer.appendChild(firework);
+
+            setTimeout(() => firework.remove(), 1000); // 폭죽 지속 시간 후 제거
+        }, 50); // 300ms 마다 새로운 폭죽 생성
+    }
+
+    function stopFireworks() {
+        clearInterval(fireworksInterval); // 폭죽 생성 인터벌 멈춤
+        const fireworksContainer = document.getElementById('fireworksContainer');
+        setTimeout(() => {
+            fireworksContainer.style.display = 'none'; // 폭죽이 모두 사라진 후 컨테이너 숨김
+            fireworksContainer.innerHTML = ''; // 남아있는 폭죽 요소 제거
+        }, 1000); // 모든 폭죽이 사라지는 시간을 고려하여 설정
+    }
+
+</script>
